@@ -1,5 +1,6 @@
 const http = require('http');
 const express = require('express');
+const bodyParser = require('body-parser');
 const { ApolloServer, gql } = require('apollo-server-express');
 const GraphQLDateTime = require('graphql-type-datetime');
 
@@ -8,15 +9,10 @@ const { machines } = require('./data');
 const typeDefs = gql`
   scalar DateTime
 
-  type GPSPosition {
-    lat: Float!
-    lng: Float!
-  }
-
   type Sensor {
-    _id: ID!
+    id: ID!
     name: String!
-    machine: Machine!
+    sensorDataPoints: [SensorDataPoint!]
   }
 
   type SensorDataPoint {
@@ -25,17 +21,19 @@ const typeDefs = gql`
   }
 
   type Machine {
-    _id: ID!
+    id: ID!
     name: String!
     sensors: [Sensor!]
-    lastKnownPosition: GPSPosition
-    date: DateTime
   }
 
   type Query {
-    machine: Machine
+    machine(id: ID!): Machine
     machines: [Machine!]
     sensorData(id: ID!, from: DateTime!, to: DateTime!): [SensorDataPoint]
+  }
+
+  schema {
+    query: Query
   }
 `;
 
@@ -43,6 +41,7 @@ const resolvers = {
   DateTime: GraphQLDateTime,
   Query: {
     machines: () => machines,
+    machine: (_, { id }) => machines.find(item => item.id === id),
   },
 };
 
@@ -50,6 +49,8 @@ const port = 4000;
 const path = '/graphql';
 const app = express();
 const server = new ApolloServer({ typeDefs, resolvers });
+
+app.use(bodyParser.json());
 
 server.applyMiddleware({ app, path });
 
